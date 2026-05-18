@@ -46,57 +46,8 @@ app.post('/api/generate-motion', upload.fields([{ name: 'image', maxCount: 1 }, 
       body: formData
     });
 
-    // ✅ CEK CONTENT TYPE SEBELUM PARSE JSON
-    const contentType = response.headers.get('content-type') || '';
-    const rawText = await response.text(); // Ambil sebagai text dulu
+    const data = await response.json();
 
-    console.log('=== MAGNIFIC API RESPONSE ===');
-    console.log('Status:', response.status);
-    console.log('Content-Type:', contentType);
-    console.log('Raw Body:', rawText.substring(0, 500)); // Log 500 char pertama
-    console.log('=============================');
-
-    // ✅ PARSE JSON DENGAN AMAN
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (parseErr) {
-      // Response bukan JSON — kemungkinan HTML error page
-      console.error('Response bukan JSON:', rawText.substring(0, 300));
-      
-      // Coba identifikasi masalah dari status code
-      if (response.status === 404) {
-        return res.status(404).json({ 
-          success: false, 
-          error: 'Endpoint API tidak ditemukan. URL mungkin salah.',
-          statusCode: 404,
-          debug: rawText.substring(0, 200)
-        });
-      }
-      if (response.status === 401 || response.status === 403) {
-        return res.status(401).json({ 
-          success: false, 
-          error: 'API Key tidak valid atau tidak memiliki akses.',
-          statusCode: 401
-        });
-      }
-      if (response.status === 502 || response.status === 503) {
-        return res.status(503).json({ 
-          success: false, 
-          error: 'Server Magnific sedang down atau maintenance.',
-          statusCode: 503
-        });
-      }
-      
-      return res.status(500).json({ 
-        success: false, 
-        error: `Server mengembalikan response tidak valid (HTTP ${response.status}). Bukan JSON.`,
-        statusCode: response.status,
-        debug: rawText.substring(0, 300)
-      });
-    }
-
-    // Handle error dari API
     if (response.status === 401 || response.status === 403)
       return res.status(401).json({ success: false, error: data.detail || data.error || 'API Key tidak valid.', statusCode: 401 });
     if (response.status === 429)
@@ -105,7 +56,6 @@ app.post('/api/generate-motion', upload.fields([{ name: 'image', maxCount: 1 }, 
       return res.status(response.status).json({ success: false, error: data.detail || data.error || `Server error: ${response.status}`, statusCode: response.status });
 
     res.json({ success: true, data });
-
   } catch (err) {
     console.error('Generate error:', err);
     res.status(500).json({ success: false, error: err.message || 'Internal server error' });
@@ -126,35 +76,12 @@ app.get('/api/task-status/:taskId', async (req, res) => {
       headers: { 'Authorization': `Bearer ${apiKey}` }
     });
 
-    // ✅ CEK CONTENT TYPE SEBELUM PARSE JSON
-    const contentType = response.headers.get('content-type') || '';
-    const rawText = await response.text();
-
-    console.log('=== TASK STATUS RESPONSE ===');
-    console.log('Status:', response.status);
-    console.log('Content-Type:', contentType);
-    console.log('Raw Body:', rawText.substring(0, 500));
-    console.log('============================');
-
-    // ✅ PARSE JSON DENGAN AMAN
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (parseErr) {
-      console.error('Status response bukan JSON:', rawText.substring(0, 300));
-      return res.status(500).json({ 
-        success: false, 
-        error: `Response tidak valid dari API (HTTP ${response.status})`,
-        statusCode: response.status,
-        debug: rawText.substring(0, 300)
-      });
-    }
+    const data = await response.json();
 
     if (!response.ok)
       return res.status(response.status).json({ success: false, error: data.detail || data.error || `Error ${response.status}`, statusCode: response.status });
 
     res.json({ success: true, data });
-
   } catch (err) {
     console.error('Status error:', err);
     res.status(500).json({ success: false, error: err.message || 'Internal server error' });
