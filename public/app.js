@@ -1,10 +1,9 @@
 /**
- * VILLAINS AI — by Sagee Jin Woo
- * Frontend Application
+ * Villains — Frontend Application
  */
 
 var CONFIG = {
-  API_BASE: window.location.origin,
+  MAGNIFIC_API: 'https://api.magnific.com/v1/kling/motion',
   POLL_INTERVAL: 10000,
   MAX_IMAGE_SIZE: 20 * 1024 * 1024,
   MAX_VIDEO_SIZE: 115 * 1024 * 1024,
@@ -94,9 +93,9 @@ function initApiKey() { updateApiKeyStatus(false); }
 
 function updateApiKeyStatus(hasKey) {
   if (hasKey) {
-    DOM.apiKeyStatus.className = 'w-2 h-2 rounded-full bg-red-500';
+    DOM.apiKeyStatus.className = 'w-2 h-2 rounded-full bg-neon-green';
     DOM.apiKeyStatusText.textContent = 'API Key telah diatur';
-    DOM.apiKeyStatusText.className = 'text-xs text-red-500/60';
+    DOM.apiKeyStatusText.className = 'text-xs text-neon-green/60';
   } else {
     DOM.apiKeyStatus.className = 'w-2 h-2 rounded-full bg-gray-700';
     DOM.apiKeyStatusText.textContent = 'Belum diatur';
@@ -200,35 +199,16 @@ function updateStatusTimeline(status) {
   else if (l === 'processing' || l === 'running' || l === 'in_progress') n = 'processing';
   else if (l === 'completed' || l === 'complete' || l === 'done' || l === 'success' || l === 'finished' || l === 'succeeded' || l === 'ready') n = 'completed';
   else if (l === 'failed' || l === 'error') n = 'failed';
-
+  
   var steps = ['queued', 'processing', 'completed'];
-  var colors = {
-    queued:     { d: 'bg-amber-400', t: 'text-amber-400' },
-    processing: { d: 'bg-red-400',   t: 'text-red-400' },
-    completed:  { d: 'bg-red-300',   t: 'text-red-300' },
-    failed:     { d: 'bg-red-600',   t: 'text-red-500' }
-  };
-
-  steps.forEach(function(s) {
-    var el = document.getElementById('step-' + s); if (!el) return;
-    el.querySelector('.status-dot').className = 'status-dot bg-gray-700';
-    el.querySelector('span').className = 'text-sm text-gray-600';
-    el.querySelector('span').textContent = s.charAt(0).toUpperCase() + s.slice(1);
-  });
-
-  if (n === 'failed') {
-    var ps = document.getElementById('step-processing');
-    if (ps) { ps.querySelector('.status-dot').className = 'status-dot ' + colors.failed.d + ' active'; ps.querySelector('span').className = 'text-sm ' + colors.failed.t; ps.querySelector('span').textContent = 'Failed'; }
-    return;
-  }
-
+  var colors = { queued: { d: 'bg-amber-400', t: 'text-amber-400' }, processing: { d: 'bg-neon-cyan', t: 'text-neon-cyan' }, completed: { d: 'bg-neon-green', t: 'text-neon-green' }, failed: { d: 'bg-neon-pink', t: 'text-neon-pink' } };
+  
+  steps.forEach(function(s) { var el = document.getElementById('step-' + s); if (!el) return; el.querySelector('.status-dot').className = 'status-dot bg-gray-700'; el.querySelector('span').className = 'text-sm text-gray-600'; el.querySelector('span').textContent = s.charAt(0).toUpperCase() + s.slice(1); });
+  
+  if (n === 'failed') { var ps = document.getElementById('step-processing'); if (ps) { ps.querySelector('.status-dot').className = 'status-dot ' + colors.failed.d + ' active'; ps.querySelector('span').className = 'text-sm ' + colors.failed.t; ps.querySelector('span').textContent = 'Failed'; } return; }
+  
   var ci = steps.indexOf(n); if (ci === -1) return;
-  for (var i = 0; i <= ci; i++) {
-    var el = document.getElementById('step-' + steps[i]); if (!el) continue;
-    var c = colors[steps[i]];
-    el.querySelector('.status-dot').className = 'status-dot ' + c.d + (i === ci ? ' active pulse' : '');
-    el.querySelector('span').className = 'text-sm ' + c.t;
-  }
+  for (var i = 0; i <= ci; i++) { var el = document.getElementById('step-' + steps[i]); if (!el) continue; var c = colors[steps[i]]; el.querySelector('.status-dot').className = 'status-dot ' + c.d + (i === ci ? ' active pulse' : ''); el.querySelector('span').className = 'text-sm ' + c.t; }
 }
 
 async function generateMotion() {
@@ -237,15 +217,17 @@ async function generateMotion() {
   if (!state.imageFile) { showToast('Upload image reference wajib dilakukan.', 'error'); return; }
 
   state.isProcessing = true; DOM.generateBtn.disabled = true; DOM.generateBtnText.textContent = 'Generating...';
-
-  var spinner = document.createElement('span');
-  spinner.className = 'spinner animate-spin';
+  
+  var spinner = document.createElement('span'); 
+  spinner.className = 'spinner animate-spin'; 
   DOM.generateBtn.insertBefore(spinner, DOM.generateBtn.firstChild);
 
   hideAllResultCards(); showCard(DOM.statusCard); DOM.emptyState.style.display = 'none';
+
   DOM.statusCard.classList.add('status-processing-glow');
-  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center';
-  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-red-400 text-lg"></i>';
+  
+  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center';
+  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-neon-cyan text-lg"></i>';
   DOM.statusTitle.textContent = 'Creating Task...'; DOM.statusTitle.classList.add('loading-pulse');
   DOM.statusSubtitle.textContent = 'Mengirim request ke Magnific API...';
   updateStatusTimeline('queued'); hideCard(DOM.taskIdSection); DOM.pollingInfo.style.display = 'none';
@@ -265,15 +247,25 @@ async function generateMotion() {
     formData.append('model', state.selectedModel);
     formData.append('cfg_scale', state.cfgScale.toString());
 
-    var response = await fetch(CONFIG.API_BASE + '/api/generate-motion', {
+    // ── DIRECT CALL TO MAGNIFIC API ──────────────────────────
+    var response = await fetch(CONFIG.MAGNIFIC_API, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + apiKey },
       body: formData
     });
     var data = await response.json();
-    if (!response.ok || !data.success) { var err = new Error(data.error || 'Server error: ' + response.status); err.statusCode = data.statusCode || response.status; throw err; }
 
-    var taskId = (data.data && data.data.task_id) || (data.data && data.data.id) || (data.data && data.data.taskId) || (data.data && data.data.data && data.data.data.task_id);
+    if (response.status === 401 || response.status === 403) {
+      var err = new Error(data.detail || data.error || 'API Key tidak valid.'); err.statusCode = 401; throw err;
+    }
+    if (response.status === 429) {
+      var err = new Error(data.detail || 'Rate limit tercapai.'); err.statusCode = 429; throw err;
+    }
+    if (!response.ok) {
+      var err = new Error(data.detail || data.error || 'Server error: ' + response.status); err.statusCode = response.status; throw err;
+    }
+
+    var taskId = (data && data.task_id) || (data && data.id) || (data && data.taskId) || (data && data.data && data.data.task_id);
     if (!taskId) throw new Error('Tidak menerima Task ID dari API.');
 
     state.currentTaskId = taskId; DOM.taskIdDisplay.textContent = taskId;
@@ -283,13 +275,13 @@ async function generateMotion() {
     DOM.statusTitle.textContent = 'Processing'; DOM.statusTitle.classList.remove('loading-pulse');
     DOM.statusTitle.classList.add('loading-dots');
     DOM.statusSubtitle.textContent = 'AI sedang memproses video Anda...';
-    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center';
-    DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-red-400 text-lg"></i>';
+    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center';
+    DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-neon-cyan text-lg"></i>';
     updateStatusTimeline('processing');
     startPolling(taskId, apiKey);
-  } catch (error) {
-    console.error('Generate Error:', error);
-    handleGenerationError(error.message, error.statusCode);
+  } catch (error) { 
+    console.error('Generate Error:', error); 
+    handleGenerationError(error.message, error.statusCode); 
   }
 }
 
@@ -301,181 +293,168 @@ function startPolling(taskId, apiKey) {
 
 async function checkTaskStatus(taskId, apiKey) {
   try {
-    var response = await fetch(CONFIG.API_BASE + '/api/task-status/' + taskId + '?model=' + state.selectedModel, {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + apiKey }
+    // ── DIRECT CALL TO MAGNIFIC API ──────────────────────────
+    var response = await fetch(CONFIG.MAGNIFIC_API + '/' + taskId + '?model=' + state.selectedModel, { 
+      method: 'GET', 
+      headers: { 'Authorization': 'Bearer ' + apiKey } 
     });
     var data = await response.json();
-    if (!response.ok || !data.success) { var err = new Error(data.error || 'Gagal mengecek status'); err.statusCode = data.statusCode || response.status; throw err; }
 
-    var taskData = data.data;
-    var rawStatus =
-      (taskData && taskData.status) ||
-      (taskData && taskData.state) ||
-      (taskData && taskData.task_status) ||
-      (taskData && taskData.data && taskData.data.status) ||
-      'unknown';
+    if (!response.ok) {
+      var err = new Error(data.detail || data.error || 'Gagal mengecek status'); err.statusCode = response.status; throw err;
+    }
+    
+    var taskData = data;
+    
+    var rawStatus = 
+        (taskData && taskData.status) || 
+        (taskData && taskData.state) || 
+        (taskData && taskData.task_status) || 
+        (taskData && taskData.data && taskData.data.status) || 
+        'unknown';
+        
     var status = rawStatus.toLowerCase();
-
+    
     console.log('Polling [' + new Date().toLocaleTimeString() + '] Status:', rawStatus);
+    console.log(taskData);
+    
     updateStatusTimeline(rawStatus);
-
-    if (status === 'created' || status === 'queued' || status === 'pending' || status === 'unknown') {
-      DOM.statusSubtitle.textContent = 'Task dalam antrian, menunggu diproses...';
-      DOM.statusTitle.textContent = 'Queued';
-      DOM.statusTitle.classList.add('loading-dots');
-    } else if (status === 'processing' || status === 'running' || status === 'in_progress') {
-      DOM.statusSubtitle.textContent = 'AI sedang menggenerasi video...';
-      DOM.statusTitle.textContent = 'Processing';
-      DOM.statusTitle.classList.add('loading-dots');
+    
+    if (status === 'created' || status === 'queued' || status === 'pending' || status === 'unknown') { 
+        DOM.statusSubtitle.textContent = 'Task dalam antrian, menunggu diproses...'; 
+        DOM.statusTitle.textContent = 'Queued'; 
+        DOM.statusTitle.classList.add('loading-dots'); 
     }
-
-    if (status === 'completed' || status === 'complete' || status === 'done' || status === 'success' || status === 'finished' || status === 'succeeded' || status === 'ready') {
-      stopPolling(); handleGenerationComplete(taskData);
+    else if (status === 'processing' || status === 'running' || status === 'in_progress') { 
+        DOM.statusSubtitle.textContent = 'AI sedang menggenerasi video...'; 
+        DOM.statusTitle.textContent = 'Processing'; 
+        DOM.statusTitle.classList.add('loading-dots'); 
     }
-    if (status === 'failed' || status === 'error') {
-      stopPolling(); handleGenerationError((taskData && taskData.error) || (taskData && taskData.message) || 'Generasi video gagal.', null);
+    
+    if (status === 'completed' || status === 'complete' || status === 'done' || status === 'success' || status === 'finished' || status === 'succeeded' || status === 'ready') { 
+        stopPolling(); 
+        handleGenerationComplete(taskData); 
     }
-  } catch (error) {
-    console.error('Polling Error:', error);
-    DOM.statusSubtitle.textContent = 'Koneksi terputus, mencoba ulang...';
+    
+    if (status === 'failed' || status === 'error') { 
+        stopPolling(); 
+        handleGenerationError((taskData && taskData.error) || (taskData && taskData.message) || 'Generasi video gagal.', (taskData && taskData.status_code) || null); 
+    }
+  } catch (error) { 
+      console.error('Polling Error:', error); 
+      DOM.statusSubtitle.textContent = 'Koneksi terputus, mencoba ulang...'; 
   }
 }
 
-function stopPolling() {
-  if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; }
-  DOM.pollingInfo.style.display = 'none';
-}
+function stopPolling() { if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; } DOM.pollingInfo.style.display = 'none'; }
 
 function handleGenerationComplete(taskData) {
-  console.log('=== COMPLETED ==='); console.log(JSON.stringify(taskData, null, 2));
+  console.log('=== COMPLETED - Full Task Data ==='); console.log(JSON.stringify(taskData, null, 2)); console.log('==================================');
 
   var videoUrl = null;
   var paths = [
-    taskData && taskData.result && taskData.result.video_url,
-    taskData && taskData.result && taskData.result.videoUrl,
-    taskData && taskData.result && taskData.result.url,
-    taskData && taskData.result && taskData.result.video,
-    taskData && taskData.video_url, taskData && taskData.videoUrl,
-    taskData && taskData.url, taskData && taskData.video,
-    taskData && taskData.output_url, taskData && taskData.download_url,
-    taskData && taskData.data && taskData.data.video_url,
-    taskData && taskData.data && taskData.data.url,
-    taskData && taskData.output && taskData.output.video_url,
-    taskData && taskData.output && taskData.output.url,
+    taskData && taskData.result && taskData.result.video_url, taskData && taskData.result && taskData.result.videoUrl,
+    taskData && taskData.result && taskData.result.url, taskData && taskData.result && taskData.result.video,
+    taskData && taskData.result && taskData.result.output_url, taskData && taskData.result && taskData.result.download_url,
+    taskData && taskData.video_url, taskData && taskData.videoUrl, taskData && taskData.url, taskData && taskData.video,
+    taskData && taskData.output_url, taskData && taskData.download_url, taskData && taskData.output,
+    taskData && taskData.data && taskData.data.video_url, taskData && taskData.data && taskData.data.videoUrl,
+    taskData && taskData.data && taskData.data.url, taskData && taskData.data && taskData.data.output_url,
+    taskData && taskData.data && taskData.data.result && taskData.data.result.video_url,
+    taskData && taskData.data && taskData.data.result && taskData.data.result.url,
+    taskData && taskData.output && taskData.output.video_url, taskData && taskData.output && taskData.output.videoUrl,
+    taskData && taskData.output && taskData.output.url, taskData && taskData.output && taskData.output.video,
+    taskData && taskData.output && taskData.output.download_url,
     taskData && taskData.generated && taskData.generated[0] && taskData.generated[0].video_url,
+    taskData && taskData.generated && taskData.generated[0] && taskData.generated[0].url,
+    taskData && taskData.generated && taskData.generated[0] && taskData.generated[0].video,
     taskData && taskData.results && taskData.results[0] && taskData.results[0].video_url,
+    taskData && taskData.results && taskData.results[0] && taskData.results[0].url,
   ];
-  for (var i = 0; i < paths.length; i++) {
-    if (paths[i] && typeof paths[i] === 'string' && paths[i].indexOf('http') === 0) { videoUrl = paths[i]; break; }
-  }
+  for (var i = 0; i < paths.length; i++) { if (paths[i] && typeof paths[i] === 'string' && paths[i].indexOf('http') === 0) { videoUrl = paths[i]; console.log('Video URL found at path', i, ':', videoUrl); break; } }
 
   if (!videoUrl && taskData) {
     var dataStr = JSON.stringify(taskData);
     var mp4Match = dataStr.match(/https?:\/\/[^\s"']+\.mp4[^\s"']*/g);
-    if (mp4Match && mp4Match.length > 0) videoUrl = mp4Match[0];
-    if (!videoUrl) {
-      var gMatch = dataStr.match(/https?:\/\/[^\s"']+(?:video|output|result|download|generated)[^\s"']*/gi);
-      if (gMatch && gMatch.length > 0) videoUrl = gMatch[0];
-    }
+    if (mp4Match && mp4Match.length > 0) { videoUrl = mp4Match[0]; console.log('MP4 found via deep scan:', videoUrl); }
+    if (!videoUrl) { var gMatch = dataStr.match(/https?:\/\/[^\s"']+(?:video|output|result|download|generated)[^\s"']*/gi); if (gMatch && gMatch.length > 0) { videoUrl = gMatch[0]; console.log('URL found via general scan:', videoUrl); } }
   }
 
   if (videoUrl) { showVideoResult(videoUrl); return; }
+  console.warn('Video URL not found! Keys:', Object.keys(taskData || {}));
   showDebugResult(taskData);
 }
 
 function showVideoResult(videoUrl) {
   var pb = document.getElementById('progressBarContainer'); if (pb) pb.remove();
-  DOM.statusCard.classList.remove('status-processing-glow');
-  DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
-  DOM.statusTitle.textContent = 'Completed';
-  DOM.statusSubtitle.textContent = 'Video berhasil di-generate!';
-  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center';
-  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-check text-red-400 text-sm"></i>';
-  showCard(DOM.resultCard);
-  DOM.resultVideo.src = videoUrl; DOM.downloadBtn.href = videoUrl;
+  DOM.statusCard.classList.remove('status-processing-glow'); DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
+  DOM.statusTitle.textContent = 'Completed'; DOM.statusSubtitle.textContent = 'Video berhasil di-generate!';
+  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-neon-green/10 flex items-center justify-center';
+  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-circle-check text-neon-green text-sm"></i>';
+  showCard(DOM.resultCard); DOM.resultVideo.src = videoUrl; DOM.downloadBtn.href = videoUrl;
   setTimeout(function() { DOM.resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
-  showToast('Video berhasil di-generate!', 'success');
-  resetProcessingState();
+  showToast('Video berhasil di-generate!', 'success'); resetProcessingState();
 }
 
 function showDebugResult(taskData) {
   var pb = document.getElementById('progressBarContainer'); if (pb) pb.remove();
-  DOM.statusCard.classList.remove('status-processing-glow');
-  DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
-  DOM.statusTitle.textContent = 'Completed (Debug)';
-  DOM.statusSubtitle.textContent = 'Video URL tidak ditemukan';
-  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-amber-900/20 flex items-center justify-center';
+  DOM.statusCard.classList.remove('status-processing-glow'); DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
+  DOM.statusTitle.textContent = 'Completed (Debug)'; DOM.statusSubtitle.textContent = 'Video URL tidak ditemukan';
+  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center';
   DOM.statusIcon.innerHTML = '<i class="fa-solid fa-bug text-amber-400 text-sm"></i>';
 
   var existingDebug = document.getElementById('debugCard'); if (existingDebug) existingDebug.remove();
   var debugCard = document.createElement('div'); debugCard.id = 'debugCard';
-  debugCard.className = 'glass-card p-6 card-enter'; debugCard.style.borderColor = 'rgba(251,191,36,0.15)';
+  debugCard.className = 'glass-card p-6 card-enter'; debugCard.style.borderColor = 'rgba(251,191,36,0.2)';
   var prettyData = JSON.stringify(taskData, null, 2); if (prettyData.length > 2000) prettyData = prettyData.substring(0, 2000) + '\n... (truncated)';
-  debugCard.innerHTML = '<div class="flex items-center gap-3 mb-4"><div class="w-8 h-8 rounded-lg bg-amber-900/20 flex items-center justify-center"><i class="fa-solid fa-bug text-amber-400 text-sm"></i></div><h3 class="font-semibold text-white">Debug Info</h3></div><p class="text-sm text-amber-400 mb-3">Task selesai tapi video URL tidak ditemukan:</p><pre class="bg-villain-900/80 rounded-xl p-4 text-xs text-gray-300 overflow-x-auto overflow-y-auto max-h-96 whitespace-pre-wrap font-mono border border-amber-900/20">' + prettyData + '</pre><button id="copyDebugBtn" class="mt-3 w-full py-3 rounded-xl bg-amber-900/20 border border-amber-800/30 text-amber-400 font-semibold text-sm hover:bg-amber-800/30 transition-all duration-300 flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Copy Data Mentah</button>';
+  debugCard.innerHTML = '<div class="flex items-center gap-3 mb-4"><div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><i class="fa-solid fa-bug text-amber-400 text-sm"></i></div><h3 class="font-semibold text-white">Debug Info</h3></div><p class="text-sm text-amber-400 mb-3">Task selesai tapi video URL tidak ditemukan. Data mentah dari Magnific API:</p><pre class="bg-cyber-900/80 rounded-xl p-4 text-xs text-gray-300 overflow-x-auto overflow-y-auto max-h-96 whitespace-pre-wrap font-mono border border-amber-500/10">' + prettyData + '</pre><p class="text-xs text-gray-600 mt-3">Copy data di atas dan kirim ke developer agar format video URL bisa disesuaikan.</p><button id="copyDebugBtn" class="mt-3 w-full py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold text-sm hover:bg-amber-500/20 transition-all duration-300 flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Copy Data Mentah</button>';
   DOM.statusCard.parentNode.insertBefore(debugCard, DOM.statusCard.nextSibling);
   setTimeout(function() { debugCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
   document.getElementById('copyDebugBtn').addEventListener('click', function() {
-    navigator.clipboard.writeText(JSON.stringify(taskData, null, 2))
-      .then(function() { showToast('Data disalin!', 'success', 2000); })
-      .catch(function() { showToast('Gagal menyalin', 'error'); });
+    navigator.clipboard.writeText(JSON.stringify(taskData, null, 2)).then(function() { showToast('Data disalin!', 'success', 2000); }).catch(function() { showToast('Gagal menyalin', 'error'); });
   });
-  showToast('Task completed tapi video URL tidak ditemukan.', 'error', 8000);
+  showToast('Task completed tapi video URL tidak ditemukan. Lihat debug info.', 'error', 8000);
   resetProcessingState();
 }
 
 function handleGenerationError(errorMessage, statusCode) {
   stopPolling();
   var pb = document.getElementById('progressBarContainer'); if (pb) pb.remove();
-  DOM.statusCard.classList.remove('status-processing-glow');
-  DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
+  DOM.statusCard.classList.remove('status-processing-glow'); DOM.statusTitle.classList.remove('loading-dots', 'loading-pulse');
+  DOM.apiKeyInvalidCard.classList.remove('card-error-glow-pink', 'card-shake');
+  DOM.apiKeyLimitCard.classList.remove('card-error-glow-amber', 'card-shake');
 
   var cleanMessage = errorMessage || 'Terjadi kesalahan yang tidak diketahui.';
   if (cleanMessage.length > 300) {
-    try {
-      var p = JSON.parse(cleanMessage);
-      if (p.detail) { cleanMessage = Array.isArray(p.detail) ? p.detail.map(function(d) { return (d.loc ? d.loc.join(' > ') + ': ' : '') + d.msg; }).join('\n') : String(p.detail); }
-      else if (p.error) { cleanMessage = String(p.error); }
-      else if (p.message) { cleanMessage = String(p.message); }
-    } catch (e) { cleanMessage = cleanMessage.substring(0, 300) + '...'; }
+    try { var p = JSON.parse(cleanMessage); if (p.detail) { cleanMessage = Array.isArray(p.detail) ? p.detail.map(function(d) { return (d.loc ? d.loc.join(' > ') + ': ' : '') + d.msg; }).join('\n') : String(p.detail); } else if (p.error) { cleanMessage = String(p.error); } else if (p.message) { cleanMessage = String(p.message); } } catch (e) { cleanMessage = cleanMessage.substring(0, 300) + '...'; }
   }
 
   if (statusCode === 401 || statusCode === 403) {
-    updateStatusTimeline('failed');
-    DOM.statusTitle.textContent = 'API Key Error';
-    DOM.statusSubtitle.textContent = 'API Key tidak valid';
-    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center';
-    DOM.statusIcon.innerHTML = '<i class="fa-solid fa-key text-red-400 text-sm"></i>';
-    showCard(DOM.apiKeyInvalidCard);
-    DOM.apiKeyInvalidCard.classList.add('card-error-glow-pink', 'card-shake');
+    updateStatusTimeline('failed'); DOM.statusTitle.textContent = 'API Key Error'; DOM.statusSubtitle.textContent = 'API Key tidak valid';
+    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-neon-pink/10 flex items-center justify-center';
+    DOM.statusIcon.innerHTML = '<i class="fa-solid fa-key text-neon-pink text-sm"></i>';
+    showCard(DOM.apiKeyInvalidCard); DOM.apiKeyInvalidCard.classList.add('card-error-glow-pink', 'card-shake');
+    var iconEl = DOM.apiKeyInvalidCard.querySelector('.fa-key'); if (iconEl) iconEl.classList.add('icon-bounce');
     setTimeout(function() { DOM.apiKeyInvalidCard.classList.remove('card-shake'); DOM.apiKeyInvalidCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
-    showToast('API Key tidak valid atau tidak terdaftar!', 'error', 6000);
-    resetProcessingState(); return;
+    showToast('API Key tidak valid atau tidak terdaftar!', 'error', 6000); resetProcessingState(); return;
   }
 
   if (statusCode === 429) {
-    updateStatusTimeline('failed');
-    DOM.statusTitle.textContent = 'Rate Limited';
-    DOM.statusSubtitle.textContent = 'Limit API tercapai';
-    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-amber-900/20 flex items-center justify-center';
+    updateStatusTimeline('failed'); DOM.statusTitle.textContent = 'Rate Limited'; DOM.statusSubtitle.textContent = 'Limit API tercapai';
+    DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center';
     DOM.statusIcon.innerHTML = '<i class="fa-solid fa-gauge-high text-amber-400 text-sm"></i>';
-    showCard(DOM.apiKeyLimitCard);
-    DOM.apiKeyLimitCard.classList.add('card-error-glow-amber', 'card-shake');
+    showCard(DOM.apiKeyLimitCard); DOM.apiKeyLimitCard.classList.add('card-error-glow-amber', 'card-shake');
+    var iconEl2 = DOM.apiKeyLimitCard.querySelector('.fa-gauge-high'); if (iconEl2) iconEl2.classList.add('icon-bounce');
     setTimeout(function() { DOM.apiKeyLimitCard.classList.remove('card-shake'); DOM.apiKeyLimitCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
-    showToast('Limit API tercapai! Tunggu atau upgrade plan.', 'error', 8000);
-    resetProcessingState(); return;
+    showToast('Limit API tercapai! Tunggu atau upgrade plan.', 'error', 8000); resetProcessingState(); return;
   }
 
-  updateStatusTimeline('failed');
-  DOM.statusTitle.textContent = 'Failed';
-  DOM.statusSubtitle.textContent = 'Generasi gagal';
-  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-red-900/30 flex items-center justify-center';
-  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-400 text-sm"></i>';
-  DOM.errorMessage.textContent = cleanMessage;
-  showCard(DOM.errorCard);
+  updateStatusTimeline('failed'); DOM.statusTitle.textContent = 'Failed'; DOM.statusSubtitle.textContent = 'Generasi gagal';
+  DOM.statusIcon.className = 'w-8 h-8 rounded-lg bg-neon-pink/10 flex items-center justify-center';
+  DOM.statusIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-neon-pink text-sm"></i>';
+  DOM.errorMessage.textContent = cleanMessage; showCard(DOM.errorCard);
   setTimeout(function() { DOM.errorCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
-  showToast(cleanMessage.substring(0, 100), 'error', 8000);
-  resetProcessingState();
+  showToast(cleanMessage.substring(0, 100), 'error', 8000); resetProcessingState();
 }
 
 function resetProcessingState() {
@@ -487,27 +466,23 @@ function resetProcessingState() {
 DOM.generateBtn.addEventListener('click', generateMotion);
 
 DOM.retryBtn.addEventListener('click', function() {
-  hideCard(DOM.errorCard); hideCard(DOM.statusCard);
-  DOM.emptyState.style.display = ''; showCard(DOM.emptyState);
-  resetProcessingState();
+  hideCard(DOM.errorCard); hideCard(DOM.statusCard); DOM.emptyState.style.display = '';
+  showCard(DOM.emptyState); resetProcessingState();
   document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
 });
 
 DOM.fixApiKeyBtn.addEventListener('click', function() {
-  hideCard(DOM.apiKeyInvalidCard); hideCard(DOM.statusCard);
-  DOM.emptyState.style.display = ''; showCard(DOM.emptyState);
-  resetProcessingState();
+  hideCard(DOM.apiKeyInvalidCard); hideCard(DOM.statusCard); DOM.emptyState.style.display = '';
+  showCard(DOM.emptyState); resetProcessingState();
   DOM.apiKeyInput.value = ''; updateApiKeyStatus(false); DOM.apiKeyInput.focus();
   DOM.apiKeyInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  DOM.apiKeyInput.style.borderColor = 'rgba(220,38,38,0.6)';
-  DOM.apiKeyInput.style.boxShadow = '0 0 20px rgba(139,0,0,0.3)';
+  DOM.apiKeyInput.style.borderColor = 'rgba(255,0,110,0.5)'; DOM.apiKeyInput.style.boxShadow = '0 0 20px rgba(255,0,110,0.2)';
   setTimeout(function() { DOM.apiKeyInput.style.borderColor = ''; DOM.apiKeyInput.style.boxShadow = ''; }, 3000);
 });
 
 DOM.retryLimitBtn.addEventListener('click', function() {
-  hideCard(DOM.apiKeyLimitCard); hideCard(DOM.statusCard);
-  DOM.emptyState.style.display = ''; showCard(DOM.emptyState);
-  resetProcessingState();
+  hideCard(DOM.apiKeyLimitCard); hideCard(DOM.statusCard); DOM.emptyState.style.display = '';
+  showCard(DOM.emptyState); resetProcessingState();
   document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
 });
 
@@ -522,10 +497,8 @@ document.addEventListener('keydown', function(e) {
 });
 
 function init() {
-  initApiKey();
-  hideCard(DOM.statusCard); hideCard(DOM.resultCard); hideCard(DOM.errorCard);
-  hideCard(DOM.apiKeyInvalidCard); hideCard(DOM.apiKeyLimitCard);
-  showCard(DOM.emptyState);
-  console.log('%cVILLAINS AI — by Sagee Jin Woo', 'color: #dc2626; font-size: 16px; font-weight: bold;');
+  initApiKey(); hideCard(DOM.statusCard); hideCard(DOM.resultCard); hideCard(DOM.errorCard);
+  hideCard(DOM.apiKeyInvalidCard); hideCard(DOM.apiKeyLimitCard); showCard(DOM.emptyState);
+  console.log('%cVILLAINS AI — Ready', 'color: #dc2626; font-size: 16px; font-weight: bold;');
 }
 init();
